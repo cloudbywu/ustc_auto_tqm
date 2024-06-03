@@ -4,8 +4,11 @@
 ##  操作指南
 ### 1.环境要求
 python 版本3.8及以上
+
 selenium 版本 4.16.0 及以上
+
 selenium库安装脚本
+
 pip install selenium
 
 下载msedgedriver.exe
