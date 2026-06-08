@@ -1,0 +1,25 @@
+## 编译输出
+bin/
+obj/
+publish/
+out/
+
+## 运行时截图
+screenshots/
+
+## 本地配置文件（含密码）
+**/appsettings.json
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+## OS
+.DS_Store
+Thumbs.db
+
+## 日志
+*.log
