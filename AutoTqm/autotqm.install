@@ -1,0 +1,26 @@
+post_install() {
+    echo ""
+    echo "========================================"
+    echo "  AutoTQM 安装完成"
+    echo "========================================"
+    echo ""
+    echo "  首次运行前，请编辑配置文件："
+    echo "    ~/.config/autotqm/appsettings.json"
+    echo ""
+    echo "  填写学号、密码后执行："
+    echo "    autotqm"
+    echo ""
+    echo "  调试模式（截图+慢动作）："
+    echo "    autotqm --debug --screenshot --slowmo=300"
+    echo ""
+    echo "  无头模式（服务器/无图形界面）："
+    echo "    autotqm --headless"
+    echo ""
+    echo "========================================"
+}
+
+post_upgrade() {
+    echo ""
+    echo "[AutoTQM] 已升级。配置文件保留在 ~/.config/autotqm/"
+    echo ""
+}

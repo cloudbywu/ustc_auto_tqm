@@ -1,0 +1,86 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=autotqm
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="USTC TQM automatic teaching evaluation tool (.NET + Playwright)"
+arch=('x86_64')
+url="https://github.com/cloudbywu/ustc_auto_tqm"
+license=('MIT')
+makedepends=('dotnet-sdk>=8.0' 'git')
+depends=('nss' 'nspr' 'atk' 'at-spi2-atk' 'libcups' 'libdrm' 'dbus' 'libxkbcommon'
+         'libxcomposite' 'libxdamage' 'libxfixes' 'libxrandr' 'mesa' 'pango'
+         'cairo' 'alsa-lib')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+options=('!strip')  # 自包含二进制不需要 strip
+
+pkgver() {
+    cd "$pkgname"
+    # 优先使用 tag，否则用 commit 日期和 hash
+    git describe --long --tags 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cd "$pkgname/AutoTqm"
+
+    _publish_dir="AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish"
+    export PLAYWRIGHT_BROWSERS_PATH="$srcdir/$pkgname/AutoTqm/$_publish_dir/.playwright"
+
+    msg2 "Building .NET self-contained binary …"
+    dotnet publish AutoTqm.Cli \
+        -c Release \
+        -r linux-x64 \
+        --self-contained true \
+        -p:PublishSingleFile=false
+
+    msg2 "Installing Chromium browser for offline use …"
+    # 使用项目本地 Playwright CLI 安装浏览器
+    dotnet new tool-manifest --force
+    dotnet tool install Microsoft.Playwright.CLI
+    dotnet tool run playwright install chromium
+}
+
+package() {
+    cd "$pkgname"
+
+    _publish_dir="AutoTqm/AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish"
+
+    # 安装程序到 /opt
+    install -dm755 "$pkgdir/opt/$pkgname"
+    cp -a "$_publish_dir"/* "$pkgdir/opt/$pkgname/"
+
+    # 创建 /usr/bin 启动脚本
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" << 'EOF'
+#!/bin/bash
+set -e
+
+export PLAYWRIGHT_BROWSERS_PATH=/opt/autotqm/.playwright
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autotqm"
+CONFIG_FILE="$CONFIG_DIR/appsettings.json"
+
+# 首次运行：复制配置模板到用户目录
+if [ ! -f "$CONFIG_FILE" ]; then
+    mkdir -p "$CONFIG_DIR"
+    cp /usr/share/autotqm/appsettings.json "$CONFIG_FILE"
+    echo "[AutoTQM] 首次运行，已创建配置文件: $CONFIG_FILE"
+    echo "[AutoTQM] 请先编辑该文件填写学号密码，然后重新运行本命令。"
+    exit 1
+fi
+
+# 在用户配置目录运行，使程序读取 ~/.config/autotqm/appsettings.json
+cd "$CONFIG_DIR"
+exec /opt/autotqm/AutoTqm.Cli "$@"
+EOF
+
+    # 安装配置模板
+    install -Dm644 "AutoTqm/AutoTqm.Cli/appsettings.example.json" \
+        "$pkgdir/usr/share/$pkgname/appsettings.json"
+
+    # 安装许可证
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+    # 安装 README
+    install -Dm644 AutoTqm/README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
