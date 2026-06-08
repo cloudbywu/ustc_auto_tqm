@@ -173,18 +173,57 @@ AutoTqm/
 
 ---
 
-## 🏗️ 发布单文件可执行程序
+## 🏗️ 发布与离线分发
+
+由于 Playwright 依赖 Chromium 浏览器（约 150-200 MB），无法打包成单个 exe。请使用以下方式发布完整文件夹。
+
+### 方式一：一键发布脚本（推荐）
+
+```powershell
+cd AutoTqm
+.\publish.ps1
+```
+
+脚本会自动完成：
+1. 编译并发布 .NET 程序
+2. 将 Chromium 浏览器安装到 `publish\.playwright\` 目录
+3. 复制 `appsettings.json` 模板
+
+发布完成后，**将整个 `publish` 文件夹**复制到目标电脑即可离线运行：
+
+```
+publish/
+├── AutoTqm.Cli.exe          # 主程序
+├── *.dll                      # 依赖库
+├── .playwright/               # Chromium 浏览器（离线必需）
+└── appsettings.json           # 配置文件（需填写学号密码）
+```
+
+> ⚠️ **分发时必须包含 `.playwright` 文件夹**，否则目标电脑需要联网下载浏览器。
+
+### 方式二：手动发布
 
 ```bash
-# Windows
-dotnet publish AutoTqm.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+# 1. 发布程序
+dotnet publish AutoTqm.Cli -c Release -r win-x64 --self-contained true
 
-# macOS
-dotnet publish AutoTqm.Cli -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true
+# 2. 安装 Chromium 到发布目录（Windows）
+$env:PLAYWRIGHT_BROWSERS_PATH = "AutoTqm.Cli\bin\Release\net8.0\win-x64\publish\.playwright"
+pwsh AutoTqm.Cli\bin\Release\net8.0\win-x64\publish\playwright.ps1 install chromium
 
-# Linux
-dotnet publish AutoTqm.Cli -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true
+# 3. 复制配置模板
+cp AutoTqm.Cli/appsettings.example.json AutoTqm.Cli/bin/Release/net8.0/win-x64/publish/appsettings.json
 ```
+
+### 跨平台发布
+
+| 平台 | 命令 |
+|------|------|
+| Windows | `dotnet publish AutoTqm.Cli -c Release -r win-x64 --self-contained true` |
+| macOS | `dotnet publish AutoTqm.Cli -c Release -r osx-x64 --self-contained true` |
+| Linux | `dotnet publish AutoTqm.Cli -c Release -r linux-x64 --self-contained true` |
+
+> 注意：`PublishSingleFile` 与 Playwright 不兼容，已禁用。必须使用文件夹式发布。
 
 ---
 

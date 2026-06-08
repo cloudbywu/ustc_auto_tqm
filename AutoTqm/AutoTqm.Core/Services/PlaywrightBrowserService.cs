@@ -24,9 +24,21 @@ public class PlaywrightBrowserService : IBrowserService
     public async Task<IPage> LaunchAsync(string url, bool headless = false, int slowMo = 0)
     {
         _logger.Info("正在初始化 Playwright …");
+
+        // 优先使用程序目录内的浏览器（离线分发模式）
+        var localBrowsersPath = Path.Combine(AppContext.BaseDirectory, ".playwright");
+        if (Directory.Exists(localBrowsersPath))
+        {
+            Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", localBrowsersPath);
+            _logger.Info($"使用打包浏览器: {localBrowsersPath}");
+        }
+        else
+        {
+            _logger.Info("使用全局浏览器（首次运行将自动下载）…");
+        }
+
         _playwright = await Playwright.CreateAsync();
 
-        // 自动下载 Chromium（Playwright 内置，无需外部驱动）
         _logger.Info("启动 Chromium 浏览器 …");
         _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
