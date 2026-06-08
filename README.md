@@ -1,6 +1,7 @@
 # AutoTQM
 
 USTC 教学质量评估（TQM）自动评教工具 — .NET 8 + Playwright 重构版
+老板python脚本打包仍提供
 
 ## 快速开始
 
