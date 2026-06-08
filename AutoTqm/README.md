@@ -179,24 +179,48 @@ AutoTqm/
 
 ### 方式一：一键发布脚本（推荐）
 
+#### Windows（PowerShell）
+
 ```powershell
 cd AutoTqm
+
+# 发布 Windows 版本（默认）
 .\publish.ps1
+
+# 发布 Linux 版本
+.\publish.ps1 -Rid linux-x64
+
+# 发布 macOS 版本
+.\publish.ps1 -Rid osx-x64
+```
+
+#### Linux / macOS（Bash）
+
+```bash
+cd AutoTqm
+
+# 发布当前平台
+chmod +x publish.sh
+./publish.sh
+
+# 或显式指定平台
+./publish.sh linux-x64
+./publish.sh osx-x64
 ```
 
 脚本会自动完成：
 1. 编译并发布 .NET 程序
-2. 将 Chromium 浏览器安装到 `publish\.playwright\` 目录
+2. 将 Chromium 浏览器安装到 `publish/.playwright/` 目录
 3. 复制 `appsettings.json` 模板
 
 发布完成后，**将整个 `publish` 文件夹**复制到目标电脑即可离线运行：
 
 ```
 publish/
-├── AutoTqm.Cli.exe          # 主程序
-├── *.dll                      # 依赖库
-├── .playwright/               # Chromium 浏览器（离线必需）
-└── appsettings.json           # 配置文件（需填写学号密码）
+├── AutoTqm.Cli(.exe)      # 主程序
+├── *.dll                    # 依赖库
+├── .playwright/             # Chromium 浏览器（离线必需）
+└── appsettings.json         # 配置文件（需填写学号密码）
 ```
 
 > ⚠️ **分发时必须包含 `.playwright` 文件夹**，否则目标电脑需要联网下载浏览器。
@@ -205,23 +229,24 @@ publish/
 
 ```bash
 # 1. 发布程序
-dotnet publish AutoTqm.Cli -c Release -r win-x64 --self-contained true
+dotnet publish AutoTqm.Cli -c Release -r linux-x64 --self-contained true
 
-# 2. 安装 Chromium 到发布目录（Windows）
-$env:PLAYWRIGHT_BROWSERS_PATH = "AutoTqm.Cli\bin\Release\net8.0\win-x64\publish\.playwright"
-pwsh AutoTqm.Cli\bin\Release\net8.0\win-x64\publish\playwright.ps1 install chromium
+# 2. 安装 Chromium 到发布目录（Linux）
+export PLAYWRIGHT_BROWSERS_PATH="AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish/.playwright"
+./AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish/playwright.sh install chromium
 
 # 3. 复制配置模板
-cp AutoTqm.Cli/appsettings.example.json AutoTqm.Cli/bin/Release/net8.0/win-x64/publish/appsettings.json
+cp AutoTqm.Cli/appsettings.example.json AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish/appsettings.json
 ```
 
-### 跨平台发布
+### 跨平台发布对照表
 
-| 平台 | 命令 |
-|------|------|
-| Windows | `dotnet publish AutoTqm.Cli -c Release -r win-x64 --self-contained true` |
-| macOS | `dotnet publish AutoTqm.Cli -c Release -r osx-x64 --self-contained true` |
-| Linux | `dotnet publish AutoTqm.Cli -c Release -r linux-x64 --self-contained true` |
+| 平台 | Runtime ID | 发布命令 | 运行命令 |
+|------|-----------|---------|---------|
+| Windows | `win-x64` | `dotnet publish -r win-x64` | `.\AutoTqm.Cli.exe` |
+| Linux | `linux-x64` | `dotnet publish -r linux-x64` | `chmod +x AutoTqm.Cli && ./AutoTqm.Cli` |
+| macOS (Intel) | `osx-x64` | `dotnet publish -r osx-x64` | `chmod +x AutoTqm.Cli && ./AutoTqm.Cli` |
+| macOS (Apple Silicon) | `osx-arm64` | `dotnet publish -r osx-arm64` | `chmod +x AutoTqm.Cli && ./AutoTqm.Cli` |
 
 > 注意：`PublishSingleFile` 与 Playwright 不兼容，已禁用。必须使用文件夹式发布。
 
