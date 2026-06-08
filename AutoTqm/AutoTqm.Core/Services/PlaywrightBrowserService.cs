@@ -1,5 +1,4 @@
 using Microsoft.Playwright;
-using System.Reflection;
 using AutoTqm.Core.Interfaces;
 
 namespace AutoTqm.Core.Services;
@@ -26,15 +25,19 @@ public class PlaywrightBrowserService : IBrowserService
     {
         _logger.Info("正在初始化 Playwright …");
 
-        // 1. 查找并配置 Playwright 浏览器与驱动路径
-        var playwrightHome = FindPlaywrightHome();
-        if (!string.IsNullOrEmpty(playwrightHome))
+        // 查找并配置 Playwright 浏览器路径与驱动路径
+        var (browserPath, driverPath) = FindPlaywrightPaths();
+        if (!string.IsNullOrEmpty(browserPath))
         {
-            Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", playwrightHome);
-            Environment.SetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH", playwrightHome);
-            _logger.Info($"使用本地 Playwright: {playwrightHome}");
+            Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", browserPath);
+            _logger.Info($"使用本地浏览器: {browserPath}");
         }
-        else
+        if (!string.IsNullOrEmpty(driverPath))
+        {
+            Environment.SetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH", driverPath);
+            _logger.Info($"使用本地驱动: {driverPath}");
+        }
+        if (string.IsNullOrEmpty(browserPath) && string.IsNullOrEmpty(driverPath))
         {
             _logger.Info("使用全局 Playwright（首次运行将自动下载）…");
         }
@@ -73,28 +76,39 @@ public class PlaywrightBrowserService : IBrowserService
     public async ValueTask DisposeAsync() => await CloseAsync();
 
     /// <summary>
-    /// 查找 Playwright 的 .playwright 目录（包含浏览器 + Node.js 驱动）
-    /// 优先级：程序目录 > NuGet 缓存 > 全局安装
+    /// 查找 Playwright 的浏览器路径和驱动路径
+    /// 返回 (browserPath, driverPath)
+    /// browserPath: 包含浏览器的 .playwright 目录
+    /// driverPath: 包含 package/ 子目录的 Playwright 安装目录
     /// </summary>
-    private static string? FindPlaywrightHome()
+    private static (string? BrowserPath, string? DriverPath) FindPlaywrightPaths()
     {
         // 优先级 1：程序所在目录的 .playwright（离线分发 / AUR 包模式）
         var appDir = AppContext.BaseDirectory;
-        if (!string.IsNullOrEmpty(appDir) && Directory.Exists(Path.Combine(appDir, ".playwright")))
-            return Path.Combine(appDir, ".playwright");
+        if (!string.IsNullOrEmpty(appDir))
+        {
+            var appPlaywright = Path.Combine(appDir, ".playwright");
+            if (Directory.Exists(appPlaywright))
+            {
+                // 驱动可能在程序目录的 package/ 子目录中
+                var appPackage = Path.Combine(appDir, "package");
+                var driverPath = Directory.Exists(appPackage) ? appDir : null;
+                return (appPlaywright, driverPath);
+            }
+        }
 
-        // 优先级 2：从环境变量读取（外部指定）
-        var envPath = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH");
-        if (!string.IsNullOrEmpty(envPath) && Directory.Exists(envPath))
-            return envPath;
+        // 优先级 2：从环境变量读取
+        var envBrowser = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH");
+        var envDriver = Environment.GetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH");
+        if (!string.IsNullOrEmpty(envBrowser) && Directory.Exists(envBrowser))
+            return (envBrowser, envDriver);
 
-        // 优先级 3：NuGet 包缓存中的 Playwright 驱动
+        // 优先级 3：NuGet 包缓存
         var nugetCache = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".nuget", "packages", "microsoft.playwright");
         if (Directory.Exists(nugetCache))
         {
-            // 找最新版本
             var versionDirs = Directory.GetDirectories(nugetCache)
                 .Select(d => new { Path = d, Version = Path.GetFileName(d) })
                 .Where(x => Version.TryParse(x.Version, out _))
@@ -103,9 +117,11 @@ public class PlaywrightBrowserService : IBrowserService
 
             foreach (var ver in versionDirs)
             {
-                var playwrightDir = Path.Combine(ver.Path, ".playwright");
-                if (Directory.Exists(playwrightDir))
-                    return playwrightDir;
+                var browserDir = Path.Combine(ver.Path, ".playwright");
+                // 驱动在 NuGet 包根目录的 package/ 子目录中
+                var packageDir = Path.Combine(ver.Path, "package");
+                if (Directory.Exists(browserDir) && Directory.Exists(packageDir))
+                    return (browserDir, ver.Path);
             }
         }
 
@@ -114,15 +130,15 @@ public class PlaywrightBrowserService : IBrowserService
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ms-playwright");
         if (Directory.Exists(globalPath))
-            return globalPath;
+            return (globalPath, null);
 
         // Linux/macOS 全局路径
         var unixGlobal = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".cache", "ms-playwright");
         if (Directory.Exists(unixGlobal))
-            return unixGlobal;
+            return (unixGlobal, null);
 
-        return null;
+        return (null, null);
     }
 }
