@@ -25,7 +25,6 @@ build() {
     cd "$pkgname/AutoTqm"
 
     _publish_dir="AutoTqm.Cli/bin/Release/net8.0/linux-x64/publish"
-    export PLAYWRIGHT_BROWSERS_PATH="$srcdir/$pkgname/AutoTqm/$_publish_dir/.playwright"
 
     msg2 "Building .NET self-contained binary …"
     dotnet publish AutoTqm.Cli \
@@ -34,8 +33,24 @@ build() {
         --self-contained true \
         -p:PublishSingleFile=false
 
-    msg2 "Installing Chromium browser for offline use …"
-    # 使用项目本地 Playwright CLI 安装浏览器
+    msg2 "Setting up Playwright driver and Chromium …"
+    # 找到 NuGet 包中的 Playwright 驱动并复制到发布目录
+    _nuget_playwright=$(find "$HOME/.nuget/packages/microsoft.playwright" -maxdepth 2 -name ".playwright" -type d 2>/dev/null | sort -V | tail -1)
+    if [ -n "$_nuget_playwright" ]; then
+        cp -a "$_nuget_playwright" "$_publish_dir/"
+        msg2 "Copied Playwright driver from NuGet cache"
+    fi
+
+    # 同时复制 playwright.sh 脚本
+    _nuget_sh=$(find "$HOME/.nuget/packages/microsoft.playwright" -maxdepth 2 -name "playwright.sh" -type f 2>/dev/null | sort -V | tail -1)
+    if [ -n "$_nuget_sh" ]; then
+        cp "$_nuget_sh" "$_publish_dir/"
+        chmod +x "$_publish_dir/playwright.sh"
+        msg2 "Copied playwright.sh"
+    fi
+
+    # 安装 Chromium 浏览器到发布目录的 .playwright
+    export PLAYWRIGHT_BROWSERS_PATH="$srcdir/$pkgname/AutoTqm/$_publish_dir/.playwright"
     dotnet new tool-manifest --force
     dotnet tool install Microsoft.Playwright.CLI
     dotnet tool run playwright install chromium
