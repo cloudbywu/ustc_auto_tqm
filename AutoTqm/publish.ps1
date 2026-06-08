@@ -23,7 +23,8 @@ $env:PLAYWRIGHT_BROWSERS_PATH = "$publishDir\.playwright"
 $playwrightPs1 = "$publishDir\playwright.ps1"
 
 if (Test-Path $playwrightPs1) {
-    pwsh $playwrightPs1 install chromium
+    # 兼容 Windows PowerShell 5.x 和 PowerShell 7+
+    & $playwrightPs1 install chromium
 } else {
     # 回退：尝试用全局 playwright CLI
     playwright install chromium

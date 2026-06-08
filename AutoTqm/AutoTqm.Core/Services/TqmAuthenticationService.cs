@@ -61,7 +61,7 @@ public class TqmAuthenticationService : IAuthenticationService
             {
                 // 尝试查找主页上的特征元素，如"进入评教"按钮或主内容区
                 var indicator = page.Locator("text=进入评教, .ant-layout-content, .index__container").First;
-                hasMainPageIndicator = await indicator.IsVisibleAsync(new() { Timeout = 500 });
+                hasMainPageIndicator = await indicator.IsVisibleAsync();
             }
             catch { /* 元素不存在或不可见，忽略 */ }
 
@@ -70,7 +70,7 @@ public class TqmAuthenticationService : IAuthenticationService
             try
             {
                 var errorLocator = page.Locator(".ant-message-error, .login-error, [class*='error']").First;
-                hasError = await errorLocator.IsVisibleAsync(new() { Timeout = 500 });
+                hasError = await errorLocator.IsVisibleAsync();
                 if (hasError)
                 {
                     var errText = await errorLocator.TextContentAsync() ?? "未知错误";
