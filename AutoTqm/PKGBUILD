@@ -50,7 +50,7 @@ package() {
     install -dm755 "$pkgdir/opt/$pkgname"
     cp -a "$_publish_dir"/* "$pkgdir/opt/$pkgname/"
 
-    # 创建 /usr/bin 启动脚本
+    # 创建 /usr/bin 启动脚本：autotqm（主命令，自动管理配置）
     install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" << 'EOF'
 #!/bin/bash
 set -e
@@ -71,6 +71,18 @@ fi
 
 # 在用户配置目录运行，使程序读取 ~/.config/autotqm/appsettings.json
 cd "$CONFIG_DIR"
+exec /opt/autotqm/AutoTqm.Cli "$@"
+EOF
+
+    # 创建 /usr/bin 启动脚本：autotqmcli（直接调用，不强制复制配置）
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/${pkgname}cli" << 'EOF'
+#!/bin/bash
+set -e
+
+export PLAYWRIGHT_BROWSERS_PATH=/opt/autotqm/.playwright
+
+# 直接调用二进制，不强制管理配置文件
+# 适合高级用户、调试、或指定自定义配置路径
 exec /opt/autotqm/AutoTqm.Cli "$@"
 EOF
 
